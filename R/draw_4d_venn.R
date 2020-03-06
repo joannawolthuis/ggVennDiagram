@@ -15,7 +15,6 @@ draw_4d_venn <- function(x, n.sides, category.names, label,...){
 
   region_data <- four_dimension_ellipse_regions(n.sides)
 
-
   counts <- four_dimension_region_values(x)
 
   plot_venn(region_data,category, counts, label, ...)

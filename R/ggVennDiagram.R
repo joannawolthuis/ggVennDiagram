@@ -16,20 +16,29 @@
 #' ggVennDiagram(x)  # 4d venn
 #' ggVennDiagram(x[1:3])  # 3d venn
 #' ggVennDiagram(x[1:2])  # 2d venn
-ggVennDiagram <- function(x, category.names=names(x), n.sides=3000,label="both",label_alpha=0.5, lty=1,color="grey",...){
+ggVennDiagram <- function(x,
+                          category.names=names(x),
+                          n.sides=3000,
+                          label="both",
+                          label_alpha=0.5,
+                          lty=1,
+                          color="grey",...){
   dimension <- length(x)
-  if (dimension == 4){
-    draw_4d_venn(x, n.sides=n.sides,category.names=category.names,label = label, label_alpha=label_alpha, lty=lty,color=color,...)
-  }
-  else if (dimension == 3){
-    draw_3d_venn(x, n.sides=n.sides,category.names=category.names,label = label, label_alpha=label_alpha,lty=lty,color=color,...)
-  }
-  else if (dimension == 2){
-    draw_2d_venn(x, n.sides=n.sides,category.names=category.names,label = label, label_alpha=label_alpha,lty=lty,color=color,...)
-  }
-  else{
-    stop("Only support 2-4 dimension venn diagram.")
-  }
+
+  suppressWarnings(
+    if (dimension == 4){
+      draw_4d_venn(x, n.sides=n.sides,category.names=category.names,label = label, label_alpha=label_alpha, lty=lty,color=color,...)
+    }
+    else if (dimension == 3){
+      draw_3d_venn(x, n.sides=n.sides,category.names=category.names,label = label, label_alpha=label_alpha,lty=lty,color=color,...)
+    }
+    else if (dimension == 2){
+      draw_2d_venn(x, n.sides=n.sides,category.names=category.names,label = label, label_alpha=label_alpha,lty=lty,color=color,...)
+    }
+    else{
+      stop("Only support 2-4 dimension venn diagram.")
+    }
+  )
 }
 
 #' get a list of items in Venn regions
@@ -70,35 +79,66 @@ get_region_items <- function(x, category.names=names(x)){
 #' @import ggplot2
 #'
 #' @return ggplot object
-plot_venn <- function(region_data, category, counts, label, label_alpha, ...){
+plot_venn <- function(region_data, category,
+                      counts, label,
+                      label_alpha, label_color,
+                      font, cf, ...){
+
   polygon <- region_data[[1]]
   center <- region_data[[2]]
+
+  data_merged <- merge(polygon,
+                      counts)
+
+  category$label <- as.character(category$label)
+
+  data_merged$group <- stringr::str_replace_all(string = data_merged$group,  c(A = paste0(category$label[1],"\n"),
+                                                                               B = paste0(category$label[2],"\n"),
+                                                                               C = paste0(category$label[3],"\n"),
+                                                                               D = category$label[4]))
+  data_merged$group <- gsub("\n$", "", data_merged$group)
+
+  myCols <- gbl$functions$color.functions[[lcl$aes$spectrum]](n = nrow(pievec))
+
   p <- ggplot() + aes_string("x","y") +
-    geom_text(aes(label=label),data=category,fontface="bold",color="black",hjust="inward",vjust="inward") +
-    geom_polygon(aes_string(fill="count",group="group"),data = merge(polygon,counts),...) +
-    theme_void() + scale_fill_gradient(low="white",high = "red") +
+    geom_text(aes(label = label),
+              data = category,
+              fontface = "bold",
+              color = ggdark::invert_color(myCols),
+              hjust = "inward",
+              vjust = "inward") +
+    geom_polygon(aes(key = (group),
+                     text = (group),
+                     fill = count),
+                 data = data_merged, ...) +
     coord_fixed() +
-    theme(legend.position = "right")
+    ggplot2::theme_void() +
+    ggplot2::theme(legend.position="none",
+                   text=ggplot2::element_text(#size=font$ax.num.size,
+                     family = font$family),
+                   panel.grid = ggplot2::element_blank()) +
+    ggplot2::scale_fill_gradientn(colours = cf(256)) +
+    ggplot2::coord_fixed(ratio = 1, xlim = NULL, ylim = NULL, expand = TRUE)
+
   if (is.null(label)){
     return(p)
   }
   else{
     counts <- counts %>%
-      mutate(percent=paste(round(.data$count*100/sum(.data$count),digits = 2),"%",sep="")) %>%
+      mutate(percent=paste(round(.data$count*100 / sum(.data$count),digits = 2),"%",sep="")) %>%
       mutate(label = paste(.data$count,"\n","(",.data$percent,")",sep=""))
     data <- merge(counts,center)
     if (label == "count"){
-      p + geom_label(aes(label=count),data=data,label.size = NA, alpha=label_alpha)
+      p + geom_text(aes(label=count), data = data, alpha = label_alpha, color = label_color)
     }
     else if (label == "percent"){
-      p + geom_label(aes_string(label="percent"),data=data,label.size = NA, alpha=label_alpha)
+      p + geom_text(aes_string(label="percent"),data = data, alpha = label_alpha, color = label_color)
     }
     else if (label == "both"){
-      p + geom_label(aes_string(label="label"),data=data,label.size = NA,alpha=label_alpha)
+      p + geom_text(aes_string(label="label"),data = data,alpha = label_alpha,color = label_color)
     }
   }
 }
-
 
 #' generating a circle
 #'
