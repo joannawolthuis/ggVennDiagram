@@ -68,6 +68,10 @@ get_region_items <- function(x, category.names=names(x)){
   }
 }
 
+map2color<-function(x,pal,limits=NULL){
+  if(is.null(limits)) limits=range(x)
+  pal[findInterval(x,seq(limits[1],limits[2],length.out=length(pal)+1), all.inside=TRUE)]
+}
 
 #' plot codes
 #'
@@ -92,33 +96,48 @@ plot_venn <- function(region_data, category,
 
   category$label <- as.character(category$label)
 
-  data_merged$group <- stringr::str_replace_all(string = data_merged$group,  c(A = paste0(category$label[1],"\n"),
-                                                                               B = paste0(category$label[2],"\n"),
-                                                                               C = paste0(category$label[3],"\n"),
-                                                                               D = category$label[4]))
-  data_merged$group <- gsub("\n$", "", data_merged$group)
+  data_merged$group_new <- stringr::str_replace_all(string = data_merged$group,
+                                                    c(A = paste0(category$label[1],"\n"),
+                                                      B = paste0(category$label[2],"\n"),
+                                                      C = paste0(category$label[3],"\n"),
+                                                      D = category$label[4]))
 
-  myCols <- gbl$functions$color.functions[[lcl$aes$spectrum]](n = nrow(pievec))
+  #category$label = gsub('(.{1,20})', '\\1\n', category$label)
+
+  data_merged$group_new <- gsub("\n$", "", data_merged$group_new)
+
+  #myCols <- gbl$functions$color.functions[[lcl$aes$spectrum]](n = nrow(pievec))
+  # library(ggVennDiagram)
+  #genes <- paste("gene",1:1000,sep="")
+  #set.seed(20190708)
+  #x <- list(A=sample(genes,300),B=sample(genes,525),C=sample(genes,440),D=sample(genes,350))
+
+  data_merged$color <- as.character(map2color(data_merged$count,
+                                              cf(max(data_merged$count))))
+
+  poly2col <- unique(data_merged[,c("group", "color")])
 
   p <- ggplot() + aes_string("x","y") +
     geom_text(aes(label = label),
               data = category,
+              size=6,
               fontface = "bold",
-              color = ggdark::invert_color(myCols),
+              color = "black",
               hjust = "inward",
               vjust = "inward") +
-    geom_polygon(aes(key = (group),
-                     text = (group),
-                     fill = count),
-                 data = data_merged, ...) +
+    geom_polygon(aes(key = (group_new),
+                     text = (group_new),
+                     fill = (color)),
+                 data = data_merged,
+                 ...) +
     coord_fixed() +
     ggplot2::theme_void() +
     ggplot2::theme(legend.position="none",
-                   text=ggplot2::element_text(#size=font$ax.num.size,
+                   text=ggplot2::element_text(
                      family = font$family),
                    panel.grid = ggplot2::element_blank()) +
-    ggplot2::scale_fill_gradientn(colours = cf(256)) +
-    ggplot2::coord_fixed(ratio = 1, xlim = NULL, ylim = NULL, expand = TRUE)
+    ggplot2::coord_fixed(ratio = 1, xlim = NULL, ylim = NULL, expand = TRUE) +
+    scale_fill_identity()
 
   if (is.null(label)){
     return(p)
@@ -128,15 +147,29 @@ plot_venn <- function(region_data, category,
       mutate(percent=paste(round(.data$count*100 / sum(.data$count),digits = 2),"%",sep="")) %>%
       mutate(label = paste(.data$count,"\n","(",.data$percent,")",sep=""))
     data <- merge(counts,center)
+    data <- merge(data, poly2col)
+    data$color <- ggdark::invert_color(data$color)
+
     if (label == "count"){
-      p + geom_text(aes(label=count), data = data, alpha = label_alpha, color = label_color)
-    }
-    else if (label == "percent"){
-      p + geom_text(aes_string(label="percent"),data = data, alpha = label_alpha, color = label_color)
+      p <- p + geom_text(aes_string(label = "count",
+                                    color = "color"),
+                         data = data,
+                         alpha = label_alpha)
+    } else if (label == "percent"){
+      p <- p + geom_text(aes_string(label="percent",
+                                    color = "color"),
+                         data = data,
+                         alpha = label_alpha)
     }
     else if (label == "both"){
-      p + geom_text(aes_string(label="label"),data = data,alpha = label_alpha,color = label_color)
+      p <- p + geom_text(aes_string(label="label",
+                                    color="color"),
+                         data = data,
+                         size=5,
+                         alpha = label_alpha)
     }
+    p + scale_color_identity()
+
   }
 }
 
