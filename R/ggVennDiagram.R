@@ -85,8 +85,9 @@ map2color<-function(x,pal,limits=NULL){
 #' @return ggplot object
 plot_venn <- function(region_data, category,
                       counts, label,
-                      label_alpha, label_color,
-                      font, cf, ...){
+                      label_alpha, cf,
+                      parseFun = as.character,
+                      ...){
 
   polygon <- region_data[[1]]
   center <- region_data[[2]]
@@ -102,15 +103,14 @@ plot_venn <- function(region_data, category,
                                                       C = paste0(category$label[3],"\n"),
                                                       D = category$label[4]))
 
-  #category$label = gsub('(.{1,20})', '\\1\n', category$label)
-
   data_merged$group_new <- gsub("\n$", "", data_merged$group_new)
 
   #myCols <- gbl$functions$color.functions[[lcl$aes$spectrum]](n = nrow(pievec))
-  # library(ggVennDiagram)
+  #library(ggVennDiagram)
   #genes <- paste("gene",1:1000,sep="")
   #set.seed(20190708)
   #x <- list(A=sample(genes,300),B=sample(genes,525),C=sample(genes,440),D=sample(genes,350))
+  #ggVennDiagram(x, cf=rainbow)
 
   data_merged$color <- as.character(map2color(data_merged$count,
                                               cf(max(data_merged$count))))
@@ -118,25 +118,22 @@ plot_venn <- function(region_data, category,
   poly2col <- unique(data_merged[,c("group", "color")])
 
   p <- ggplot() + aes_string("x","y") +
-    geom_text(aes(label = label),
-              data = category,
-              size=6,
-              fontface = "bold",
-              color = "black",
-              hjust = "inward",
-              vjust = "inward") +
-    geom_polygon(aes(key = (group_new),
+        geom_polygon(aes(key = (group_new),
                      text = (group_new),
                      fill = (color)),
                  data = data_merged,
                  ...) +
-    coord_fixed() +
+    geom_text(aes(label = parseFun(label)),
+              data = category,
+              size = 4,
+              #vjust=0.5,
+              #hjust=0,
+              fontface="bold",
+              color="black") +
+    coord_fixed(ratio=1, clip="off", expand = T) +
     ggplot2::theme_void() +
-    ggplot2::theme(legend.position="none",
-                   text=ggplot2::element_text(
-                     family = font$family),
-                   panel.grid = ggplot2::element_blank()) +
-    ggplot2::coord_fixed(ratio = 1, xlim = NULL, ylim = NULL, expand = TRUE) +
+    ggplot2::theme(panel.grid = ggplot2::element_blank()) +
+    #ggplot2::coord_fixed(ratio = 1, xlim = NULL, ylim = NULL, expand = TRUE) +
     scale_fill_identity()
 
   if (is.null(label)){
@@ -154,18 +151,20 @@ plot_venn <- function(region_data, category,
       p <- p + geom_text(aes_string(label = "count",
                                     color = "color"),
                          data = data,
+                         size=4,
                          alpha = label_alpha)
     } else if (label == "percent"){
       p <- p + geom_text(aes_string(label="percent",
                                     color = "color"),
                          data = data,
+                         size=4,
                          alpha = label_alpha)
     }
     else if (label == "both"){
       p <- p + geom_text(aes_string(label="label",
                                     color="color"),
                          data = data,
-                         size=5,
+                         size=4,
                          alpha = label_alpha)
     }
     p + scale_color_identity()
