@@ -126,8 +126,6 @@ plot_venn <- function(region_data, category,
     geom_text(aes(label = parseFun(label)),
               data = category,
               size = 4,
-              #vjust=0.5,
-              #hjust=0,
               fontface="bold",
               color="black") +
     coord_fixed(ratio=1, clip="off", expand = T) +
